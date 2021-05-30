@@ -27,23 +27,19 @@ char *normalizar(char *string);
 /*
 Transformar texto en estructuras de datos
 */
-void parse(char *linea, char *arg_ptr[MAX_ARGS]);
+void parse_command(char *linea, char *arg_ptr[MAX_ARGS]);
+
+void parse_input(char *linea, char *arg_ptr[2][MAX_ARGS]);
 
 /*
 Liberar memoria
 */
-void free_args(char* arg[])
-{
-    for (int i = 0; arg[i] != NULL; i++)
-    {
-        free(arg[i]);
-    }
-}
+void free_arg(char *arg[]);
 
 int main(void)
 {
     char comm_str[INPUT_MAX_LENGTH];
-    char *arg_ptr[MAX_ARGS];
+    char *arg_ptr[2][MAX_ARGS];
     char *dir;
     char dNow[1024];
 
@@ -64,20 +60,20 @@ int main(void)
         if (strlen(comm_str) == 0)
             continue;
 
-        parse(comm_str, arg_ptr);
+        parse_input(comm_str, arg_ptr);
         normalizar((char *)arg_ptr[0]);
 
         //Salir del shell
-        if (strcmp(arg_ptr[0], "exit") == 0)
+        if (strcmp(arg_ptr[0][0], "exit") == 0)
         {
-            free_args(arg_ptr);
+            //free_args(arg_ptr);
             exit(0);
         }
 
         //Moverse entre directorios
-        if (strcmp(arg_ptr[0], "cd") == 0)
+        if (strcmp(arg_ptr[0][0], "cd") == 0)
         {
-            dir = arg_ptr[1];
+            dir = arg_ptr[0][1];
             if (dir == NULL)
             {
                 dir = getenv("HOME");
@@ -94,7 +90,7 @@ int main(void)
             continue;
         }
 
-        pid_t pid;
+        /*pid_t pid;
         switch (pid = fork())
         {
         case -1:
@@ -110,13 +106,12 @@ int main(void)
         default:
             wait(NULL);
             break;
-        }
+        }*/
 
-        free_args(arg_ptr);
+        //free_args(arg_ptr);
     }
 
-    exit(0);    
-
+    exit(0);
 }
 
 char *normalizar(char *string)
@@ -132,15 +127,26 @@ char *normalizar(char *string)
     return string;
 }
 
-void parse(char *linea, char *arg_ptr[MAX_ARGS])
+void parse_input(char *linea, char *arg_ptr[2][MAX_ARGS])
 {
-    int start = 0;
-    int end = 0;
+    char *tube = strchr(linea, '|');
+    if (tube != NULL)
+    {
+        *tube = 0;
+        parse_command(tube + 1, arg_ptr[1]);
+    }
+    parse_command(linea, arg_ptr[0]);
+}
+
+void parse_command(char *linea, char *arg_ptr[MAX_ARGS])
+{
+    volatile int start = 0;
+    volatile int end = 0;
     int i = 0;
     char *memo;
     while (start < strlen(linea))
     {
-        for (; linea[end] != ' '; end++)
+        for (; linea[end] != ' ' && linea[end] != 0; end++)
             ;
         arg_ptr[i] = malloc(end - start + 1);
         memcpy(arg_ptr[i], linea + start, end - start);
@@ -152,4 +158,12 @@ void parse(char *linea, char *arg_ptr[MAX_ARGS])
     }
 
     arg_ptr[i] = NULL;
+}
+
+void free_args(char *arg[])
+{
+    for (int i = 0; arg[i] != NULL; i++)
+    {
+        free(arg[i]);
+    }
 }
